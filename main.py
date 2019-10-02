@@ -6,7 +6,7 @@ AUTHOR:      Jiajun Chang
 PROJECT:     EECS 159 Senior Design
              Project Testla: Water Quality Detection Boat
 
-DESCRIPTION: This file builds the command client, using pymavlink module,
+DESCRIPTION: This file builds the command interface, using pymavlink module,
              to receive and send message to autopilot PIXHAWK.
 '''
 
