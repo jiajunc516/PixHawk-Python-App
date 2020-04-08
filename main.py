@@ -12,7 +12,9 @@ DESCRIPTION: This file builds the command interface, using pymavlink module,
 
 from pymavlink import mavutil
 from pymavlink import mavwp
+from math import sqrt
 import os
+import sys
 
 # gcc draft.c -o DRAFT -lwiringPi -lwiringPiDev -lm
 
@@ -192,6 +194,72 @@ def run_mission(the_connection, wp, wp_list, alt, cnt, rfile, wfile):
         i += 1
     print("Mission Complete")
 
+'''
+Route:
+    To find shortest path to visite all waypoints.
+    Give two options:
+        1. Brute Force, O(n!)
+        2. Greedy, O(n^2), 20% longer than optimal solution
+'''
+class Route:
+    def __init__(self, home, points):
+        self.origin = self.getOrigin(home)
+        self.points = self.getPoints(points)
+    
+    def getOrigin(self, origin):
+        return (float(origin.lat), float(origin.lng))
+
+    def getPoints(self, points):
+        res = []
+        for i, latlng in enumerate(points):
+            res.append((i, float(latlng[0], float(latlng[1]))))
+        return res
+    
+    def distance(self, origin, point):
+        return sqrt((origin[0]-point[0])**2 + (origin[1]-point[1])**2)
+    
+    def bruteForce(self):
+        mind, minpath = self.bruteForceHelp(self.origin, self.points, [], 0)
+        return minpath
+    
+    def bruteForceHelp(self, start, points, path, sumd):
+        if len(points) == 1:
+            sumd += self.distance(start, (points[0][1:]))
+            path.append((points[0][1:]))
+            return sumd, path
+        mind, minpath = sys.maxsize, []
+        for i in range(len(points)):
+            path.append(points[i][1:])
+            d = self.distance(start, points[i][1:])
+            sumd += self.distance(start, points[i][1:])
+            resd, respath = self.bruteForceHelp(points[i][1:], points[:i] + points[i+1:], path, sumd)
+            if mind > resd:
+                mind = resd
+                minpath = respath
+            path.pop()
+            sumd -= d
+        return mind, minpath
+
+    def greedy(self):
+        res = []
+        i, n = 0, len(self.points)
+        start = self.origin
+        while i < n - 1:
+            mind = sys.maxsize
+            k = i
+            for j in range(i, n):
+                d = self.distance(start, self.points[j])
+                if mind > d:
+                    mind = d
+                    k = self.points[j][0]
+            if k != i:
+                self.points[i], self.points[k] = self.points[k], self.points[i]
+            res.append((self.points[k][1:]))
+            i += 1
+            start = self.points[i]
+        res.append((self.points[-1][1:]))
+        return res
+
 def run_os(filename):
 '''
     Execute the program
@@ -211,6 +279,11 @@ def run_os(filename):
     wp_cnt = len(wp_list)
     print("Received")
     #save_waypoint(wp)
+
+    ##Test Shortest Path To Travel To All Points
+    # route = Route(home_location, wp_list)
+    # wp_list = route.bruteForce()
+    # wp_list = route.greedy()
     
     # readfile:  read from pi if data is sent
     # writefile: write to the file that pi reads to know whether read data or not
